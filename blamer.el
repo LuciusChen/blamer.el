@@ -4,7 +4,7 @@
 
 ;; Author: Artur Yaroshenko <artawower@protonmail.com>
 ;; URL: https://github.com/artawower/blamer.el
-;; Package-Requires: ((emacs "27.1") 
+;; Package-Requires: ((emacs "27.1")
 ;; Version: 0.7.4
 
 ;; This program is free software; you can redistribute it and/or modify
