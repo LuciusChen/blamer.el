@@ -198,7 +198,8 @@ This feature required Emacs built with `imagemagick'"
 (defcustom blamer-avatar-ratio '(3 . 3)
   "Image ration for avatar."
   :group 'blamer
-  :type 'cons)
+  :type '(cons (integer :tag "Width ratio")
+          (integer :tag "Height ratio")))
 
 (defcustom blamer-avatar-cache-time 604800
   "Time in seconds to cache avatar.  Default value is 1 week."
@@ -216,13 +217,14 @@ This feature required Emacs built with `imagemagick'"
   "List of regexps for uploaders.
 Each element is a cons cell (REGEXP . FUNCTION)."
   :group 'blamer
-  :type 'list)
+  :type '(alist :key-type string
+          :value-type (list string function)))
 
 (defcustom blamer-fallback-avatar-config
   '("https://www.gravatar.com/avatar" blamer--fallback-avatar-uploader)
   "Fallback avatar config."
   :group 'blamer
-  :type 'list)
+  :type '(list (string :tag "URL") (function :tag "Uploader function")))
 
 (defface blamer-face
     '((t :foreground "#7a88cf"
