@@ -897,7 +897,7 @@ TYPE - is optional argument that can replace global `blamer-type' variable."
           (dolist (cmd-msg blame-cmd-res)
             (unless (blamer--git-cmd-error-p cmd-msg)
               (let ((commit-info (blamer--parse-line-info cmd-msg include-avatar-p)))
-		   (setq blamer--git-commit-info commit-info)
+		(setq blamer--git-commit-info commit-info)
                 (blamer--render-line-overlay commit-info type)
                 (forward-line)))))))))
 
@@ -1009,6 +1009,12 @@ will appear after BLAMER-IDLE-TIME.  It works only inside git repo"
             (add-hook 'post-command-hook #'blamer--try-render nil t)
             (add-hook 'window-state-change-hook #'blamer--try-render nil t))
         (blamer--reset-state)))))
+
+;;;###autoload
+(defun blamer-copy-commit-hash ()
+  "Copy commit hash to kill ring."
+  (interactive)
+  (kill-new (plist-get blamer--git-commit-info :commit-hash)))
 
 ;;;###autoload
 (define-globalized-minor-mode
