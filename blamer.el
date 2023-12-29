@@ -325,6 +325,9 @@ author name by left click and copying commit hash by right click.
 (defvar-local blamer--current-author nil
   "Git.name for current repository.")
 
+(defvar blamer--git-commit-info nil
+  "Git commit info")
+
 (defun blamer-tooltip-commit-message (commit-info)
   "This function can be use as `blamer-tooltip-function'.
 Will show the commit message from COMMIT-INFO."
@@ -894,6 +897,7 @@ TYPE - is optional argument that can replace global `blamer-type' variable."
           (dolist (cmd-msg blame-cmd-res)
             (unless (blamer--git-cmd-error-p cmd-msg)
               (let ((commit-info (blamer--parse-line-info cmd-msg include-avatar-p)))
+		   (setq blamer--git-commit-info commit-info)
                 (blamer--render-line-overlay commit-info type)
                 (forward-line)))))))))
 
