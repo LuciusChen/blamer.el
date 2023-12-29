@@ -878,7 +878,7 @@ TYPE - is optional argument that can replace global `blamer-type' variable."
                                       (line-number-at-pos))
                                   (line-number-at-pos)))
              (file-name (blamer--get-local-name (buffer-file-name)))
-             ;; (include-avatar-p (eq type 'overlay-popup))
+             (include-avatar-p (eq type 'overlay-popup))
              (blame-cmd-res (when file-name
                               (apply #'vc-git--run-command-string file-name
                                      (append blamer--git-blame-cmd
