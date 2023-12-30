@@ -1014,18 +1014,18 @@ will appear after BLAMER-IDLE-TIME.  It works only inside git repo"
 
 ;;;###autoload
 (defun blamer-copy-commit-hash ()
-  "Copy commit hash to kill ring."
+  "Copy commit hash to kill ring if blamer-mode is enabled."
   (interactive)
-  (if (blamer--git-exist-p)
+  (if (and blamer-mode (blamer--git-exist-p))  ; Check if blamer-mode is active
       (let* ((commit-hash (plist-get blamer--git-commit-info :commit-hash))
              (commit-author (plist-get blamer--git-commit-info :commit-author))
              (commit-message (plist-get blamer--git-commit-info :commit-message)))
         (kill-new commit-hash)
         (message "%s" (concat
                        commit-author " >> "
-                       (plist-get blamer--git-commit-info :commit-message)
-                       " >> "  commit-hash " copied!")))
-    (message "Please enable =blamer-mode=")))
+                       commit-message
+                       " >> " commit-hash " copied!")))
+    (message "Please enable blamer-mode with M-x blamer-mode")))
 
 ;;;###autoload
 (define-globalized-minor-mode
