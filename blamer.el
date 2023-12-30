@@ -1019,12 +1019,11 @@ will appear after BLAMER-IDLE-TIME.  It works only inside git repo"
   (if (and blamer-mode (blamer--git-exist-p))  ; Check if blamer-mode is active
       (let* ((commit-hash (plist-get blamer--git-commit-info :commit-hash))
              (commit-author (plist-get blamer--git-commit-info :commit-author))
-             (commit-message (plist-get blamer--git-commit-info :commit-message)))
+             (commit-message (plist-get blamer--git-commit-info :commit-message))
+             (copy-prompt (format "✎%s >> %s >> %s copied!"
+                                  commit-author commit-message commit-hash)))
         (kill-new commit-hash)
-        (message "%s" (concat
-                       commit-author " >> "
-                       commit-message
-                       " >> " commit-hash " copied!")))
+        (message copy-prompt))
     (message "Please enable blamer-mode with M-x blamer-mode")))
 
 ;;;###autoload
