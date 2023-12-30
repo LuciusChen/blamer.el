@@ -1016,7 +1016,10 @@ will appear after BLAMER-IDLE-TIME.  It works only inside git repo"
 (defun blamer-copy-commit-hash ()
   "Copy commit hash to kill ring."
   (interactive)
-  (kill-new (plist-get blamer--git-commit-info :commit-hash)))
+  (kill-new (plist-get blamer--git-commit-info :commit-hash))
+  (message "%s" (concat
+                 (plist-get blamer--git-commit-info :commit-message)
+                 "-> commit-hash copied!")))
 
 ;;;###autoload
 (define-globalized-minor-mode
