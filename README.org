@@ -1,4 +1,4 @@
 Changes:
 - remove posframe
 - remove avatar
-- add =blamer-copy-commit-hash（）=
+- add =blamer-copy-commit-hash()=
