@@ -184,48 +184,6 @@ If not will use background from `blamer-face'"
   :group 'blamer
   :type 'boolean)
 
-(defcustom blamer-show-avatar-p t
-  "Show avatar in popup.
-This feature required Emacs built with `imagemagick'"
-  :group 'blamer
-  :type 'boolean)
-
-(defcustom blamer-avatar-size 96
-  "Size of avatar."
-  :group 'blamer
-  :type 'int)
-
-(defcustom blamer-avatar-ratio '(3 . 3)
-  "Image ration for avatar."
-  :group 'blamer
-  :type '(cons (integer :tag "Width ratio")
-          (integer :tag "Height ratio")))
-
-(defcustom blamer-avatar-cache-time 604800
-  "Time in seconds to cache avatar.  Default value is 1 week."
-  :group 'blamer
-  :type 'int)
-
-(defcustom blamer-avatar-folder "~/.blamer/avatars/"
-  "Folder for avatars."
-  :group 'blamer
-  :type 'string)
-
-(defcustom blamer-avatar-regexps-uploaders-alist
-  '(("github" . ("https://api.github.com/search/users" blamer--github-avatar-uploader))
-    ("gitlab" . ("https://gitlab.com" blamer--gitlab-avatar-uploader)))
-  "List of regexps for uploaders.
-Each element is a cons cell (REGEXP . FUNCTION)."
-  :group 'blamer
-  :type '(alist :key-type string
-          :value-type (list string function)))
-
-(defcustom blamer-fallback-avatar-config
-  '("https://www.gravatar.com/avatar" blamer--fallback-avatar-uploader)
-  "Fallback avatar config."
-  :group 'blamer
-  :type '(list (string :tag "URL") (function :tag "Uploader function")))
-
 (defface blamer-face
     '((t :foreground "#7a88cf"
        :background unspecified
@@ -497,11 +455,8 @@ Return nil if error."
       (setq commit-message (match-string 1 git-commit-res))
       (split-string commit-message "\n"))))
 
-(defun blamer--parse-line-info (blame-msg &optional include-avatar-p)
-  "Parse BLAME-MSG and create a plist.
-
-When INCLUDE-AVATAR-P provided and non-nil,
-avatar will be downloaded and included in the plist."
+(defun blamer--parse-line-info (blame-msg)
+  "Parse BLAME-MSG and create a plist."
   (string-match blamer--regexp-info blame-msg)
   (let* ((commit-hash (string-trim (match-string 1 blame-msg)))
          (raw-commit-author (match-string 2 blame-msg))
@@ -521,131 +476,17 @@ avatar will be downloaded and included in the plist."
                             blamer-max-commit-message-length nil nil "...")))
          (commit-description (cdr commit-messages))
          (raw-commit-message (nth 1 commit-messages))
-         (avatar (when (and
-                        blamer-show-avatar-p
-                        include-avatar-p
-                        (not uncommitted)
-                        (display-graphic-p))
-                   (blamer--get-avatar author-email)))
          (parsed-commit-info `(:commit-hash ,commit-hash
                                             :author-email ,author-email
                                             :commit-author ,commit-author
                                             :commit-date ,commit-date
                                             :commit-time ,commit-time
-                                            :commit-avatar ,avatar
                                             :raw-commit-author ,raw-commit-author
                                             :commit-message ,commit-message
                                             :commit-description ,commit-description
                                             :raw-commit-message ,raw-commit-message)))
 
     parsed-commit-info))
-
-(defun blamer--github-avatar-uploader (remote-url file-path author-email)
-  "Download the author avatar from REMOTE-URL using the AUTHOR-EMAIL to FILE-PATH."
-  (let* ((url (concat remote-url "?q=" author-email))
-         (response (url-retrieve-synchronously url))
-         (response-data (with-current-buffer response
-                          (goto-char (point-min))
-                          (search-forward "\n\n")
-                          (json-read)))
-         (items (cdr (assoc 'items response-data)))
-         (first-item (and (> (length items) 0) (elt items 0)))
-         (avatar-url (and first-item (cdr (assoc 'avatar_url first-item)))))
-
-    (if avatar-url
-        (blamer--upload-avatar avatar-url file-path)
-      (funcall (cadr blamer-fallback-avatar-config)
-               (car blamer-fallback-avatar-config)
-               file-path author-email))))
-
-
-(defun blamer--gitlab-avatar-url (author-email)
-  "Get the avatar URL for the email address AUTHOR-EMAIL on GitLab."
-  (let ((url (format "https://gitlab.com/api/v4/avatar?email=%s" author-email)))
-    (with-current-buffer (url-retrieve-synchronously url)
-      (goto-char (point-min))
-      (let ((json-object-type 'hash-table))
-        (let ((json-data (json-read)))
-          (gethash "avatar_url" json-data))))))
-
-(defun blamer--fallback-avatar-uploader (remote-url file-path author-email)
-  "Fallback function for upload avatars and save it.
-FILE-PATH - path to save avatar.
-AUTHOR-EMAIL - email of author.
-REMOTE-URL - url of resource to download avatar."
-  (blamer--upload-avatar (format "%s/%s?d=identicon" remote-url (md5 author-email)) file-path))
-
-(defun blamer--gitlab-avatar-uploader (remote-url file-path author-email)
-  "Upload avatar from REMOTE-URL for gitlab using AUTHOR-EMAIL to FILE-PATH."
-  (when-let ((url (format "%s/api/v4/avatar?email=%s" remote-url author-email))
-             (response (url-retrieve-synchronously url))
-             (json-string (with-current-buffer response
-                            (buffer-substring (point) (point-max))))
-             (json-object-type 'hash-table)
-             (json-data (json-read-from-string json-string))
-             (avatar-url (gethash "avatar_url" json-data)))
-    (blamer--upload-avatar avatar-url file-path)))
-
-(defun blamer--normalize-file-path (file-path)
-  "Normalize FILE-PATH for Windows."
-  (setq file-path (replace-regexp-in-string ">" "" file-path))
-  (setq file-path (replace-regexp-in-string " " "-" file-path))
-  (setq file-path (replace-regexp-in-string "<" "" file-path))
-  file-path)
-
-(defun blamer--upload-avatar (url file-path)
-  "Download the avatar from URL and save it to the path as FILE-PATH.
-HOST-NAME is the name of the host for caching.
-host folder.
-If the file already exists, return the path to the existing file."
-  (unless (file-exists-p (file-name-directory file-path))
-    (make-directory (file-name-directory file-path) t))
-  (setq file-path (blamer--normalize-file-path file-path))
-  (ignore-errors
-    (url-copy-file url file-path t)
-    file-path))
-
-
-(defun blamer--find-avatar-uploader (remote-ref)
-  "Find the avatar uploader function and REMOTE-REF that match the provided STRING.
-
-The uploader functions and URLs are defined in
-`blamer-avatar-regexps-uploaders-alist`."
-  (let ((uploader-pair (assoc-default remote-ref blamer-avatar-regexps-uploaders-alist 'string-match)))
-    (if uploader-pair
-        uploader-pair
-      blamer-fallback-avatar-config)))
-
-(defun blamer--get-avatar (author-email)
-  "Get avatar url for AUTHOR or AUTHOR-EMAIL.
-Function return current path for avatar url.
-Works only for github right now."
-  (when-let* ((remote-ref (vc-git--run-command-string nil "ls-remote" "--get-url" "origin"))
-              (uploader-fn-path (blamer--find-avatar-uploader remote-ref))
-              (uploader-path (car uploader-fn-path))
-              (uploader-fn (car (cdr uploader-fn-path)))
-              (host-name (when (string-match "https?://\\(?1:.*\\)/?" uploader-path)
-                           (match-string 1 uploader-path)))
-              (host-name (car (split-string host-name "/")))
-              (folder (concat (file-name-as-directory blamer-avatar-folder)
-                              (file-name-as-directory host-name)))
-              (filename (format "%s.png" author-email))
-              (file-path (concat folder filename)))
-
-
-    (if (and (file-exists-p file-path)
-             (not (blamer--cache-outdated-p file-path)))
-        file-path
-      (funcall uploader-fn uploader-path file-path author-email))))
-
-(defun blamer--cache-outdated-p (file-path)
-  "Check if the cache for FILE-PATH is outdated."
-  (let* ((attributes (file-attributes file-path))
-         (creation-time (nth 5 attributes))
-         (current-time (current-time)))
-
-    (> (time-to-seconds (time-subtract current-time creation-time))
-       blamer-avatar-cache-time)))
 
 (defun blamer--get-available-width-before-window-end ()
   "Return count of chars before window end."
@@ -826,32 +667,22 @@ Return list of strings."
 (defun blamer--build-pretty-content (commit-info)
   "Build pretty content inside separated buffer from COMMIT-INFO."
   (let* ((msg-list (blamer--create-popup-text-content commit-info))
-         (commit-avatar (plist-get commit-info :commit-avatar))
-         (insert-avatar-p (and blamer-show-avatar-p
-                               (image-type-available-p 'imagemagick)
-                               commit-avatar))
          (commit-message (or (plist-get commit-info :commit-message) ""))
          ;; TODO: find better way to calculate image size for pretty paddings between commit info
          ;; (hw (* (frame-char-width) blamer-avatar-size))
-         (commit-info-prefix (if insert-avatar-p "  " "")))
+         (commit-info-prefix ""))
     (save-excursion
       (with-current-buffer (get-buffer-create blamer--buffer-name)
         (erase-buffer)
         (insert "\n")
-        (when (and (image-type-available-p 'imagemagick) insert-avatar-p)
-          (insert-sliced-image
-           (create-image commit-avatar 'imagemagick nil :height blamer-avatar-size :width blamer-avatar-size)
-           nil nil (car blamer-avatar-ratio) (cdr blamer-avatar-ratio)))
         (goto-char (point-min))
         (forward-line 1)
 
         (dolist (m msg-list)
           (end-of-line)
           (insert (concat commit-info-prefix m))
-          (unless insert-avatar-p (insert "\n"))
           (forward-line 1))
         (when (and commit-message (not (string= commit-message "")))
-          (when insert-avatar-p (insert "\n"))
           (insert (blamer--prettify-commit-message (or (plist-get commit-info :commit-message) "")))
           (insert "\n"))
 
@@ -883,7 +714,6 @@ TYPE - is optional argument that can replace global `blamer-type' variable."
                                       (line-number-at-pos))
                                   (line-number-at-pos)))
              (file-name (blamer--get-local-name (buffer-file-name)))
-             (include-avatar-p (eq type 'overlay-popup))
              (blame-cmd-res (when file-name
                               (apply #'vc-git--run-command-string file-name
                                      (append blamer--git-blame-cmd
@@ -898,7 +728,7 @@ TYPE - is optional argument that can replace global `blamer-type' variable."
 
           (dolist (cmd-msg blame-cmd-res)
             (unless (blamer--git-cmd-error-p cmd-msg)
-              (let ((commit-info (blamer--parse-line-info cmd-msg include-avatar-p)))
+              (let ((commit-info (blamer--parse-line-info cmd-msg)))
 		(setq blamer--git-commit-info commit-info)
                 (blamer--render-line-overlay commit-info type)
                 (forward-line)))))))))
