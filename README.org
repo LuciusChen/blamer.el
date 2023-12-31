@@ -1,0 +1,4 @@
+Changes:
+- remove posframe
+- remove avatar
+- add =blamer-copy-commit-hash（）=
