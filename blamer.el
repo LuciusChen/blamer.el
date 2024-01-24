@@ -788,6 +788,7 @@ TYPE - is optional argument that can replace global `blamer-type' variable."
           (blamer--async-parse-line-info
            cmd-msg
            (lambda (commit-info)
+             (setq blamer--git-commit-info commit-info)
              (blamer--render-line-overlay
               commit-info
               buffer
