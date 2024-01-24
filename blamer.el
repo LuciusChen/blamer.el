@@ -471,12 +471,8 @@ Rusn CALLBACK with partial user-info plist."
            (list author-email commit-res)))
       callback))))
 
-(defun blamer--async-parse-line-info (blame-msg callback line-number &optional include-avatar-p)
-  "Parse BLAME-MSG from LINE-NUMBER and create a plist with commit info.
-
-When INCLUDE-AVATAR-P provided and non-nil,
-avatar will be downloaded and included in the plist.
-Run CALLBACK after async process is done."
+(defun blamer--async-parse-line-info (blame-msg callback line-number)
+  "Parse BLAME-MSG from LINE-NUMBER and create a plist with commit info."
   (string-match blamer--regexp-info blame-msg)
   (let* ((commit-hash (string-trim (match-string 1 blame-msg)))
          (raw-commit-author (match-string 2 blame-msg))
@@ -501,13 +497,7 @@ Run CALLBACK after async process is done."
                                  commit-message
                                  blamer-max-commit-message-length nil nil "...")))
               (commit-description (cdr commit-messages))
-              (raw-commit-message (nth 1 commit-messages))
-              (avatar (when (and
-                             blamer-show-avatar-p
-                             include-avatar-p
-                             (not uncommitted)
-                             (display-graphic-p))
-                        (blamer--get-avatar author-email))))
+              (raw-commit-message (nth 1 commit-messages)))
          (funcall
           callback
           `(:commit-hash ,commit-hash
@@ -515,7 +505,6 @@ Run CALLBACK after async process is done."
                          :commit-author ,commit-author
                          :commit-date ,commit-date
                          :commit-time ,commit-time
-                         :commit-avatar ,avatar
                          :raw-commit-author ,raw-commit-author
                          :commit-message ,commit-message
                          :commit-description ,commit-description
@@ -782,14 +771,10 @@ TYPE - is optional argument that can replace global `blamer-type' variable."
               commit-infos
               current-buffer
               start-line-number
-              include-avatar-p
               type))))))))
 
-(defun blamer--handle-async-blame-info-result (encoded-commit-infos buffer start-line-number include-avatar-p &optional type)
-  "Handle base64 ENCODED-COMMIT-INFOS for BUFFER and START-LINE-NUMBER.
-INCLUDE-AVATAR-P is optional argument that can replace
-global `blamer-show-avatar-p' variable
-TYPE is optional view render type."
+(defun blamer--handle-async-blame-info-result (encoded-commit-infos buffer start-line-number &optional type)
+  "Handle base64 ENCODED-COMMIT-INFOS for BUFFER and START-LINE-NUMBER."
   (when encoded-commit-infos
     (let* ((commit-infos (base64-decode-string encoded-commit-infos))
            (commit-infos (if commit-infos
@@ -808,8 +793,7 @@ TYPE is optional view render type."
               buffer
               (blamer--get-render-point buffer (plist-get commit-info :line-number))
               type))
-           line-number
-           include-avatar-p)
+           line-number)
           (setq line-number (1+ line-number)))))))
 
 (defun blamer--goto-line (line-number)
